@@ -76,7 +76,7 @@ def send_bark_notification(message, icon_url, bark_url):
     payload = {
         "title": "【直播通知】",
         "body": message,
-        "sound": "default",
+        "sound": "healthnotification",
         "icon": icon_url or "",
     }
     try:
@@ -136,7 +136,7 @@ def main():
 
         # 仅直播状态从非1变成1时推送通知
         if live_state == 1 and old_status != 1:
-            msg = f"{title}\n🔔{user.get('uname', uname)} 开播了！\n当前粉丝数：{user.get('follower_num', 0)}"
+            msg = f"@{user.get('uname', uname)} 开播了！\n[标题]{title}\n[粉丝]{user.get('follower_num', 0)}\n"
             live_messages.append(msg)
             if first_live_icon is None:
                 first_live_icon = user.get("face", "")
@@ -151,7 +151,10 @@ def main():
         send_bark_notification(message, first_live_icon, bark_url)
     else:
         if any_live_now:
-            print("当前无新增开播，但有主播在直播中")
+            # 收集正在直播的主播名称
+            live_hosts = [info.get("uname", "") for rid_str, info in room_infos.items() if live_status_new.get(rid_str) == 1]
+            live_hosts_str = "、".join([f"【{host}】" for host in live_hosts])
+            print(f"当前正在直播的有{live_hosts_str}，无新增开播")
         else:
             print("当前无直播开播")
 
