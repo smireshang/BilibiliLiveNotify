@@ -1,7 +1,7 @@
 # BilibiliLiveNotify
-Live broadcast reminder
+哔哩哔哩直播开播提醒
 ### 配置文件
-config:
+config
 ```
 {
     "bark_url": "https://api.day.app/key/", //自定义设备KEY
