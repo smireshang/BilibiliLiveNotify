@@ -1,0 +1,11 @@
+{
+    "bark_url": "https://api.day.app/key/",
+    "room_ids": [
+        111111,
+        222222
+    ],
+    "users": {
+    },
+    "live_status": {
+    }
+}
