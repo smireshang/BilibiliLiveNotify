@@ -1,5 +1,6 @@
 # BilibiliLiveNotify
 Live broadcast reminder
+### 配置文件
 config:
 ```
 {
