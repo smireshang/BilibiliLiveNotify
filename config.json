@@ -1,6 +1,6 @@
 {
     "bark_url": "https://api.day.app/key/",
-    "room_ids": [
+    "uids": [
         111111,
         222222
     ],

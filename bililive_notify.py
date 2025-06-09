@@ -19,7 +19,7 @@ def load_config():
     except FileNotFoundError:
         return {
             "bark_url": "",
-            "room_ids": [],
+            "uids": [],
             "users": {},
             "live_status": {}
         }
@@ -50,23 +50,22 @@ def update_user_info(uid):
         print(f"请求用户信息异常: {uid} - {e}")
     return None
 
-def get_room_base_info(room_ids):
-    url = "https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomBaseInfo"
-    params = []
-    for rid in room_ids:
-        params.append(("room_ids", str(rid)))
-    params.append(("req_biz", "web_room_componet"))
-
+def get_live_status_info(uids):
+    """
+    使用 API 获取 UID 的直播状态信息
+    """
+    url = "https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids"
+    params = [("uids[]", str(uid)) for uid in uids]
     try:
         resp = requests.get(url, params=params, headers=HEADERS, timeout=10)
         resp.raise_for_status()
         data = resp.json()
-        if data.get("code") == 0 and "data" in data and "by_room_ids" in data["data"]:
-            return data["data"]["by_room_ids"]
+        if data.get("code") == 0 and "data" in data:
+            return data["data"]
         else:
-            print(f"获取直播房间信息失败: {data.get('message')}")
+            print(f"获取直播状态失败: {data.get('message')}")
     except Exception as e:
-        print(f"请求直播房间信息异常: {e}")
+        print(f"请求直播状态异常: {e}")
     return {}
 
 def send_bark_notification(message, icon_url, bark_url):
@@ -89,50 +88,50 @@ def send_bark_notification(message, icon_url, bark_url):
 def main():
     config = load_config()
     bark_url = config.get("bark_url", "").strip()
-    room_ids = config.get("room_ids", [])
+    uids = config.get("uids", [])
     users = config.get("users", {})
     live_status = config.get("live_status", {})
 
-    if not room_ids:
-        print("配置中 room_ids 为空，退出")
+    if not uids:
+        print("配置中 uids 为空，退出")
         return
 
-    # 获取直播房间信息
-    room_infos = get_room_base_info(room_ids)
+    # 获取直播状态信息
+    live_infos = get_live_status_info(uids)
 
     live_messages = []
     first_live_icon = None
     any_live_now = False  # 标记当前是否有直播中
     live_status_new = live_status.copy()
 
-    # 依次处理每个房间
-    for rid in room_ids:
-        rid_str = str(rid)
-        info = room_infos.get(rid_str)
+    # 依次处理每个 UID
+    live_hosts = []
+    for uid in uids:
+        uid_str = str(uid)
+        info = live_infos.get(uid_str)
         if not info:
-            # 该房间接口无返回，默认未直播
-            live_status_new[rid_str] = 0
+            # 该主播接口无返回，默认未直播
+            live_status_new[uid_str] = 0
             continue
 
         live_state = info.get("live_status", 0)
-        uid = info.get("uid")
         title = info.get("title", "")
         uname = info.get("uname", "")
 
         # 更新用户信息，如果用户不存在或粉丝数为0，则更新一次（避免没数据）
-        user = users.get(str(uid))
+        user = users.get(uid_str)
         if user is None or user.get("follower_num", 0) == 0:
             user_data = update_user_info(uid)
             if user_data:
-                users[str(uid)] = user_data
+                users[uid_str] = user_data
                 user = user_data
             else:
                 user = {"uname": uname, "face": "", "follower_num": 0}
 
         any_live_now = any_live_now or (live_state == 1)
 
-        old_status = live_status.get(rid_str, 0)
-        live_status_new[rid_str] = live_state
+        old_status = live_status.get(uid_str, 0)
+        live_status_new[uid_str] = live_state
 
         # 仅直播状态从非1变成1时推送通知
         if live_state == 1 and old_status != 1:
@@ -140,6 +139,9 @@ def main():
             live_messages.append(msg)
             if first_live_icon is None:
                 first_live_icon = user.get("face", "")
+        
+        if live_state == 1:
+            live_hosts.append(f"【{user.get('uname', uname)}】")
 
     # 保存用户和直播状态信息
     config["users"] = users
@@ -147,13 +149,15 @@ def main():
     save_config(config)
 
     if live_messages:
+        # 添加当前正在直播的主播列表到通知末尾
+        if live_hosts:
+            live_hosts_str = "、".join(live_hosts)
+            live_messages.append(f"当前正在直播的有：{live_hosts_str}")
         message = "\n------------\n".join(live_messages)
         send_bark_notification(message, first_live_icon, bark_url)
     else:
         if any_live_now:
-            # 收集正在直播的主播名称
-            live_hosts = [info.get("uname", "") for rid_str, info in room_infos.items() if live_status_new.get(rid_str) == 1]
-            live_hosts_str = "、".join([f"【{host}】" for host in live_hosts])
+            live_hosts_str = "、".join(live_hosts)
             print(f"当前正在直播的有{live_hosts_str}，无新增开播")
         else:
             print("当前无直播开播")
