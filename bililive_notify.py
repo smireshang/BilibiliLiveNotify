@@ -68,12 +68,12 @@ def get_live_status_info(uids):
         print(f"请求直播状态异常: {e}")
     return {}
 
-def send_bark_notification(message, icon_url, bark_url):
+def send_bark_notification(message, icon_url, bark_url, live_count):
     if not bark_url:
         print("BARK_URL 未配置，无法推送消息")
         return
     payload = {
-        "title": "【直播通知】",
+        "title": f"【Live通知】当前{live_count}人直播中",
         "body": message,
         "sound": "healthnotification",
         "icon": icon_url or "",
@@ -152,15 +152,15 @@ def main():
         # 添加当前正在直播的主播列表到通知末尾
         if live_hosts:
             live_hosts_str = "、".join(live_hosts)
-            live_messages.append(f"当前正在直播的有：{live_hosts_str}")
+            live_messages.append(f"当前正在直播：{live_hosts_str}")
         message = "\n------------\n".join(live_messages)
-        send_bark_notification(message, first_live_icon, bark_url)
+        send_bark_notification(message, first_live_icon, bark_url, len(live_hosts))
     else:
         if any_live_now:
             live_hosts_str = "、".join(live_hosts)
-            print(f"当前正在直播的有{live_hosts_str}，无新增开播")
+            print(f"当前正在直播：{live_hosts_str}，无新增开播")
         else:
-            print("当前无直播开播")
+            print("当前无主播开播")
 
 if __name__ == "__main__":
     main()
