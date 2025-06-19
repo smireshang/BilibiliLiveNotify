@@ -152,7 +152,7 @@ def main():
         # 添加当前正在直播的主播列表到通知末尾
         if live_hosts:
             live_hosts_str = "、".join(live_hosts)
-            live_messages.append(f"当前正在直播：{live_hosts_str}")
+            live_messages.append(f"📽Living：{live_hosts_str}")
         message = "\n------------\n".join(live_messages)
         send_bark_notification(message, first_live_icon, bark_url, len(live_hosts))
     else:
